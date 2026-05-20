@@ -1,0 +1,143 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: #121212;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: #1e1e1e;
+    border-bottom: 1px solid #2d2d2d;
+}
+
+.app-header h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.icon-button {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.icon-button:active {
+    transform: rotate(45deg);
+}
+
+/* Griglia Pulsanti */
+.app-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.grid-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 400px;
+    height: 60vh;
+}
+
+/* Stile dei Pulsanti Esperienza */
+.exp-button {
+    background-color: #1e1e1e;
+    border: 2px solid #333;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.exp-button .icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    filter: grayscale(100%);
+    opacity: 0.3;
+}
+
+.exp-button .label {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #777;
+}
+
+/* STATO ATTIVO (Sbloccato dal GPS) */
+.exp-button:not([disabled]) {
+    border-color: #00adb5;
+    background-color: #222831;
+    box-shadow: 0 4px 15px rgba(0, 173, 181, 0.2);
+}
+
+.exp-button:not([disabled]) .icon {
+    filter: grayscale(0%);
+    opacity: 1;
+}
+
+.exp-button:not([disabled]) .label {
+    color: #00adb5;
+}
+
+.exp-button:not([disabled]):active {
+    transform: scale(0.95);
+}
+
+/* Finestra Modale QR Code */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.9);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background-color: #1e1e1e;
+    padding: 20px;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 350px;
+    text-align: center;
+}
+
+.modal-content h2 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+}
+
+.close-button {
+    margin-top: 15px;
+    background-color: #ff2e63;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}

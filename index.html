@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAB Lighthouse</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Libreria open-source per scansionare i QR Code -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+
+    <!-- Header dell'App -->
+    <header class="app-header">
+        <h1>MAB Lighthouse</h1>
+        <button id="btn-config" class="icon-button" title="Configurazione">⚙️</button>
+    </header>
+
+    <!-- Griglia Principale dei 4 Pulsanti Esperienza -->
+    <main class="app-container">
+        <div class="grid-buttons">
+            <button id="btn-fly" class="exp-button" disabled>
+                <span class="icon">🛸</span>
+                <span class="label">FLY</span>
+            </button>
+            <button id="btn-play" class="exp-button" disabled>
+                <span class="icon">🎵</span>
+                <span class="label">PLAY</span>
+            </button>
+            <button id="btn-hear" class="exp-button" disabled>
+                <span class="icon">🗣️</span>
+                <span class="label">HEAR</span>
+            </button>
+            <button id="btn-image" class="exp-button" disabled>
+                <span class="icon">📸</span>
+                <span class="label">IMAGE</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- Elemento Audio per PLAY e HEAR -->
+    <audio id="audio-player" controls style="display:none;"></audio>
+
+    <!-- Input Fotocamera nascosto per la funzione IMAGE nativa su mobile -->
+    <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none;">
+
+    <!-- Schermata Modale per lo Scanner QR Code -->
+    <div id="qr-modal" class="modal">
+        <div class="modal-content">
+            <h2>Inquadra il QR Code della rotta</h2>
+            <div id="reader" style="width: 100%;"></div>
+            <button id="btn-close-qr" class="close-button">Annulla</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
