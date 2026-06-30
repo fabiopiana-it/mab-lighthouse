@@ -4,19 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MAB Lighthouse</title>
+    <!-- Stile della Mappa Integrata -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
-    <!-- Libreria open-source per scansionare i QR Code -->
+    <!-- Librerie esterne -->
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
-    <!-- Header dell'App -->
+    <!-- Header dell'App (Tema Chiaro) -->
     <header class="app-header">
-        <h1>MAB Lighthouse</h1>
-        <button id="btn-config" class="icon-button" title="Configurazione">⚙️</button>
+        <div class="header-titles">
+            <h1>MAB Lighthouse</h1>
+            <h2 id="activity-title">Nessuna rotta caricata</h2>
+        </div>
+        <button id="btn-config" class="icon-button">⚙️</button>
     </header>
 
-    <!-- Griglia Principale dei 4 Pulsanti Esperienza -->
+    <!-- Griglia Principale dei 4 Pulsanti -->
     <main class="app-container">
         <div class="grid-buttons">
             <button id="btn-fly" class="exp-button" disabled>
@@ -38,18 +44,31 @@
         </div>
     </main>
 
-    <!-- Elemento Audio per PLAY e HEAR -->
     <audio id="audio-player" controls style="display:none;"></audio>
-
-    <!-- Input Fotocamera nascosto per la funzione IMAGE nativa su mobile -->
     <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none;">
 
-    <!-- Schermata Modale per lo Scanner QR Code -->
+    <!-- SCHERMATA MAPPA INTEGRATA (FLY) -->
+    <div id="map-screen" class="full-screen-view">
+        <header class="view-header">
+            <button id="btn-close-map" class="back-button">⬅️ Indietro</button>
+            <h3>Mappa Zenitale</h3>
+        </header>
+        <div id="map"></div>
+    </div>
+
+    <!-- SCHERMATA MODALE CONFIGURAZIONE -->
     <div id="qr-modal" class="modal">
         <div class="modal-content">
-            <h2>Inquadra il QR Code della rotta</h2>
+            <h2>Configurazione Rotta</h2>
             <div id="reader" style="width: 100%;"></div>
-            <button id="btn-close-qr" class="close-button">Annulla</button>
+            
+            <div class="manual-input-zone">
+                <p>Oppure incolla il link del Foglio Google:</p>
+                <input type="text" id="input-manual-url" placeholder="https://docs.google.com/spreadsheets/...">
+                <button id="btn-save-manual" class="primary-button">Carica Link</button>
+            </div>
+            
+            <button id="btn-close-qr" class="close-button">Chiudi</button>
         </div>
     </div>
 

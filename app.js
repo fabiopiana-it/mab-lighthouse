@@ -1,13 +1,16 @@
-// =========================================================================
-// STATO GLOBALE DELL'APPLICAZIONE
-// =========================================================================
-let listaEsperienze = []; // Array contenente la rotta attiva scaricata da Google Sheets
-let html5QrCode;         // Istanza dello scanner QR Code
+let listaEsperienze = [];
+let html5QrCode;
+let mappaLeaflet = null;
+let markerUtente = null;
+let statiPrecedentiAbilitati = { FLY: false, PLAY: false, HEAR: false, IMAGE: false };
 
-// Riferimenti agli elementi HTML
 const btnConfig = document.getElementById('btn-config');
 const qrModal = document.getElementById('qr-modal');
 const btnCloseQr = document.getElementById('btn-close-qr');
+const btnSaveManual = document.getElementById('btn-save-manual');
+const inputManualUrl = document.getElementById('input-manual-url');
+const activityTitle = document.getElementById('activity-title');
+
 const btnFly = document.getElementById('btn-fly');
 const btnPlay = document.getElementById('btn-play');
 const btnHear = document.getElementById('btn-hear');
@@ -15,222 +18,213 @@ const btnImage = document.getElementById('btn-image');
 const cameraInput = document.getElementById('camera-input');
 const audioPlayer = document.getElementById('audio-player');
 
-// =========================================================================
-// 1. INIZIALIZZAZIONE E CARICAMENTO DATI ALL'AVVIO
-// =========================================================================
+const mapScreen = document.getElementById('map-screen');
+const btnCloseMap = document.getElementById('btn-close-map');
+
 window.addEventListener('DOMContentLoaded', () => {
-    // Controlliamo se ci sono dati di una rotta precedentemente salvati sul telefono
     const datiSalvati = localStorage.getItem('mab_lighthouse_data');
     if (datiSalvati) {
         listaEsperienze = JSON.parse(datiSalvati);
-        console.log("Rotta precedente ripristinata dalla memoria:", listaEsperienze);
+        if(listaEsperienze.length > 0 && listaEsperienze[0].Nome_Attivita) {
+            activityTitle.innerText = listaEsperienze[0].Nome_Attivita;
+        }
         avviaGeofencing();
     }
 });
 
-// =========================================================================
-// 2. SCANNER QR CODE (CONFIGURAZIONE DA GOOGLE SHEETS)
-// =========================================================================
-btnConfig.addEventListener('click', () => {
-    qrModal.style.display = 'flex';
-    html5QrCode = new Html5Qrcode("reader");
-    
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-    
-    // Forza l'uso della fotocamera posteriore (environment)
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        config, 
-        onQrCodeSuccess, 
-        onQrCodeError
-    ).catch(err => {
-        console.error("Impossibile avviare fotocamera:", err);
-        alert("Permesso fotocamera negato o non disponibile.");
-        chiudiScanner();
-    });
-});
+function estraiIdUniversale(input) {
+    if (!input) return "";
+    const matchD = input.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (matchD) return matchD[1];
+    return input.trim();
+}
 
-function onQrCodeSuccess(decodedText) {
-    console.log(`QR Code rilevato: ${decodedText}`);
-    let sheetId = estraiIdDaLinkGoogleSheets(decodedText);
-    
-    if (sheetId) {
-        localStorage.setItem('mab_lighthouse_sheet_id', sheetId);
+btnSaveManual.addEventListener('click', () => {
+    let urlInserito = inputManualUrl.value;
+    let sheetId = estraiIdUniversale(urlInserito);
+    if (sheetId && sheetId.length > 10) {
         scaricaConfigurazioneDaGoogleSheets(sheetId);
+        qrModal.style.display = 'none';
+        inputManualUrl.value = "";
     } else {
-        alert("QR Code non valido. Deve contenere il link o l'ID di un Foglio Google.");
+        alert("Inserisci un link valido di Google Fogli.");
     }
-    chiudiScanner();
-}
-
-function onQrCodeError(err) { /* Ignorato per non intasare i log dei frame */ }
-
-btnCloseQr.addEventListener('click', chiudiScanner);
-
-function chiudiScanner() {
-    qrModal.style.display = 'none';
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.error(err));
-    }
-}
-
-function estraiIdDaLinkGoogleSheets(url) {
-    const matches = url.match(/\/d\/([a-zA-O0-9-_]+)/);
-    return matches ? matches[1] : url; // Se non è un link completo, assume sia l'ID puro
-}
-
-// =========================================================================
-// 3. DOWNLOAD E PARSING DEL FOGLIO GOOGLE (FORMATO CSV)
-// =========================================================================
-async function scaricaConfigurazioneDaGoogleSheets(sheetId) {
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
-
-    try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Impossibile accedere al file.");
-        
-        const dataText = await response.text();
-        listaEsperienze = parseCSV(dataText);
-        
-        // Salviamo stabilmente sul dispositivo
-        localStorage.setItem('mab_lighthouse_data', JSON.stringify(listaEsperienze));
-        alert("Configurazione della rotta completata con successo!");
-        
-        avviaGeofencing();
-    } catch (error) {
-        console.error(error);
-        alert("Errore nel caricamento. Assicurati che il foglio sia condiviso come 'Chiunque abbia il link può visualizzare'.");
-    }
-}
+});
 
 function parseCSV(text) {
     const lines = text.split("\n");
     const result = [];
     if (lines.length === 0) return result;
     
-    const headers = lines[0].split(",").map(h => h.trim());
+    const headers = lines[0].split(",").map(h => h.trim().replace(/\r/g, ""));
 
     for (let i = 1; i < lines.length; i++) {
         if (!lines[i]) continue;
-        const currentline = lines[i].split(",").map(cell => cell.trim());
+        const currentline = lines[i].split(",").map(cell => cell.trim().replace(/\r/g, ""));
         const obj = {};
         
         headers.forEach((header, index) => {
-            let value = currentline[index];
-            if (header === "Latitudine" || header === "Longitudine" || header === "Raggio_Metri") {
-                value = parseFloat(value);
-            }
-            obj[header] = value;
+            obj[header] = currentline[index];
         });
+
+        if (obj["Coordinate"]) {
+            const coordinatePulite = obj["Coordinate"].split(",");
+            obj["Latitudine"] = parseFloat(coordinatePulite[0]);
+            obj["Longitudine"] = parseFloat(coordinatePulite[1]);
+        }
+        if (obj["Raggio_Metri"]) obj["Raggio_Metri"] = parseInt(obj["Raggio_Metri"]);
+        
         result.push(obj);
     }
     return result;
 }
 
-// =========================================================================
-// 4. MOTORE DI GEOFENCING (GPS ALTA PRECISIONE)
-// =========================================================================
-function avviaGeofencing() {
-    if (!navigator.geolocation) {
-        alert("Il dispositivo non supporta il GPS.");
-        return;
+async function scaricaConfigurazioneDaGoogleSheets(sheetId) {
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error();
+        const dataText = await response.text();
+        
+        listaEsperienze = parseCSV(dataText);
+        localStorage.setItem('mab_lighthouse_data', JSON.stringify(listaEsperienze));
+        if(listaEsperienze.length > 0 && listaEsperienze[0].Nome_Attivita) {
+            activityTitle.innerText = listaEsperienze[0].Nome_Attivita;
+        }
+        alert("Rotta memorizzata permanentemente!");
+        avviaGeofencing();
+    } catch (e) {
+        alert("Errore di caricamento. Verifica la condivisione del foglio.");
     }
+}
 
-    const opzioniGps = {
-        enableHighAccuracy: true, // Forza l'uso del sensore GPS hardware
-        timeout: 10000,
-        maximumAge: 0
-    };
-
-    navigator.geolocation.watchPosition(elaboraPosizioneUtente, (err) => console.warn(err), opzioniGps);
+function avviaGeofencing() {
+    navigator.geolocation.watchPosition(elaboraPosizioneUtente, (err) => console.log(err), {
+        enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+    });
 }
 
 function elaboraPosizioneUtente(position) {
     const latUtente = position.coords.latitude;
     const lonUtente = position.coords.longitude;
     
-    resetStatoPulsanti();
+    if (mappaLeaflet && markerUtente) markerUtente.setLatLng([latUtente, lonUtente]);
 
-    listaEsperienze.forEach(esperienza => {
-        const distanza = calcolaDistanzaMetri(latUtente, lonUtente, esperienza.Latitudine, esperienza.Longitudine);
-        
-        if (distanza <= esperienza.Raggio_Metri) {
-            console.log(`Punto sbloccato! Funzione: ${esperienza.Tipo_Funzione} a ${distanza.toFixed(1)}m`);
-            attivaEsperienzaDinamica(esperienza.Tipo_Funzione, esperienza.ID_Risorsa_Drive);
+    let statoAttualeBottoni = { FLY: false, PLAY: false, HEAR: false, IMAGE: false };
+    let datiPuntoAttivo = null;
+
+    listaEsperienze.forEach(esp => {
+        const distanza = calcolaDistanzaMetri(latUtente, lonUtente, esp.Latitudine, esp.Longitudine);
+        if (distanza <= esp.Raggio_Metri) {
+            const tipo = esp.Tipo_Funzione.toUpperCase();
+            statoAttualeBottoni[tipo] = true;
+            if (tipo === 'IMAGE') datiPuntoAttivo = esp; // Memorizziamo il record intero del punto attivo
+            else if (tipo === 'PLAY' || tipo === 'HEAR' || tipo === 'FLY') {
+                btnFly.setAttribute('data-drive-id', estraiIdUniversale(esp.Link_Risorsa_Drive));
+                btnPlay.setAttribute('data-drive-id', estraiIdUniversale(esp.Link_Risorsa_Drive));
+                btnHear.setAttribute('data-drive-id', estraiIdUniversale(esp.Link_Risorsa_Drive));
+            }
         }
     });
-}
 
-function resetStatoPulsanti() {
-    [btnFly, btnPlay, btnHear, btnImage].forEach(btn => {
-        btn.disabled = true;
-        btn.removeAttribute('data-drive-id');
+    // Se l'utente è in un punto IMAGE, salviamo i dati dinamici nel bottone come attributi HTML
+    if (statoAttualeBottoni['IMAGE'] && datiPuntoAttivo) {
+        btnImage.disabled = false;
+        btnImage.setAttribute('data-mail', datiPuntoAttivo["Contatto_Email"] || "");
+        btnImage.setAttribute('data-whatsapp', datiPuntoAttivo["Contatto_WhatsApp"] || "");
+    } else {
+        btnImage.disabled = true;
+        btnImage.removeAttribute('data-mail');
+        btnImage.removeAttribute('data-whatsapp');
+    }
+
+    let deveVibrare = false;
+    ['FLY', 'PLAY', 'HEAR', 'IMAGE'].forEach(tipo => {
+        if (statoAttualeBottoni[tipo] && !statiPrecedentiAbilitati[tipo]) deveVibrare = true;
+        statiPrecedentiAbilitati[tipo] = statoAttualeBottoni[tipo];
     });
+    if (deveVibrare && navigator.vibrate) navigator.vibrate([300, 100, 300]);
+
+    btnFly.disabled = !statoAttualeBottoni['FLY'];
+    btnPlay.disabled = !statoAttualeBottoni['PLAY'];
+    btnHear.disabled = !statoAttualeBottoni['HEAR'];
 }
 
-function attivaEsperienzaDinamica(tipo, idRisorsa) {
-    let bottone;
-    switch(tipo.toUpperCase()) {
-        case 'FLY': bottone = btnFly; break;
-        case 'PLAY': bottone = btnPlay; break;
-        case 'HEAR': bottone = btnHear; break;
-        case 'IMAGE': bottone = btnImage; break;
-    }
-    
-    if (bottone) {
-        bottone.disabled = false;
-        bottone.setAttribute('data-drive-id', idRisorsa);
-    }
-}
-
-// Formula di Haversine per calcolo geodetico della distanza
-function calcolaDistanzaMetri(lat1, lon1, lat2, lon2) {
-    const R = 6371000; 
-    const phi1 = lat1 * Math.PI / 180;
-    const phi2 = lat2 * Math.PI / 180;
-    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
-    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
-
-    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-              Math.cos(phi1) * Math.cos(phi2) *
-              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
-
-// =========================================================================
-// 5. LOGICA DELLE AZIONI AL CLICK (FLY, PLAY, HEAR, IMAGE)
-// =========================================================================
 btnFly.addEventListener('click', () => {
-    navigator.geolocation.getCurrentPosition((position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        const urlMappa = `https://www.google.com/maps/@${lat},${lon},200m/data=!3m1!1e3`;
-        window.open(urlMappa, '_blank');
+    mapScreen.style.display = 'flex';
+    navigator.geolocation.getCurrentPosition((pos) => {
+        const lat = pos.coords.latitude; const lon = pos.coords.longitude;
+        if (!mappaLeaflet) {
+            mappaLeaflet = L.map('map').setView([lat, lon], 18);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(mappaLeaflet);
+            markerUtente = L.marker([lat, lon]).addTo(mappaLeaflet).bindPopup('Tu sei qui').openPopup();
+        } else { mappaLeaflet.setView([lat, lon], 18); markerUtente.setLatLng([lat, lon]); }
     });
 });
+btnCloseMap.addEventListener('click', () => { mapScreen.style.display = 'none'; });
 
-function riproduciAudioDaDrive(bottone) {
-    const driveId = bottone.getAttribute('data-drive-id');
-    if (!driveId) return;
-
-    const urlStreaming = `https://docs.google.com/uc?export=download&id=${driveId}`;
-    audioPlayer.src = urlStreaming;
-    audioPlayer.play()
-        .then(() => alert("Esperienza audio avviata..."))
-        .catch(err => alert("Errore di riproduzione. Verifica i permessi del file su Drive."));
+function playAudio(btn) {
+    const id = btn.getAttribute('data-drive-id'); if (!id) return;
+    audioPlayer.src = `https://docs.google.com/uc?export=download&id=${id}`;
+    audioPlayer.play().catch(() => alert("Errore file audio."));
 }
+btnPlay.addEventListener('click', (e) => playAudio(e.currentTarget));
+btnHear.addEventListener('click', (e) => playAudio(e.currentTarget));
 
-btnPlay.addEventListener('click', (e) => riproduciAudioDaDrive(e.currentTarget));
-btnHear.addEventListener('click', (e) => riproduciAudioDaDrive(e.currentTarget));
-
+// LOGICA DINAMICA FOTOCAMERA ED INVIO DA FOGLIO GOOGLE
 btnImage.addEventListener('click', () => cameraInput.click());
 
 cameraInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
-    if (file) {
-        const driveFolderId = btnImage.getAttribute('data-drive-id');
-        alert(`Foto scattata! Pronta per essere inviata alla cartella Drive: ${driveFolderId || 'Default'}`);
-        // Il file Blob è pronto per l'upload tramite le API di Drive o Apps Script
+    if (!file) return;
+
+    // Recupera Mail e WhatsApp letti dal foglio di calcolo per quel punto specifico
+    const mailDestinatario = btnImage.getAttribute('data-mail');
+    const whatsappDestinatario = btnImage.getAttribute('data-whatsapp');
+
+    if (!mailDestinatario && !whatsappDestinatario) {
+        alert("Configurazione incompleta: nel Foglio Google non sono inseriti i contatti per questo punto.");
+        return;
+    }
+
+    const oraLocale = new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'}).replace(':', 'h');
+    const dataLocale = new Date().toISOString().slice(0,10);
+    const nomeDefault = `Foto_${dataLocale}_${oraLocale}`;
+
+    let nomeScelto = prompt("Dai un nome a questa foto per riconoscerla:", nomeDefault);
+    if (nomeScelto === null) return;
+    if (nomeScelto.trim() === "") nomeScelto = nomeDefault;
+
+    const estensione = file.name.split('.').pop() || "jpg";
+    const nomeFileFinale = `${nomeScelto.replace(/[^a-zA-Z0-9-_ ]/g, '_')}.${estensione}`;
+    const nomeAttivita = activityTitle.innerText;
+
+    // SCELTA AUTOMATICA DEL CANALE IN BASE A COSA È STATO COMPILATO NEL FOGLIO GOOGLE
+    if (whatsappDestinatario && whatsappDestinatario.trim() !== "") {
+        // Se c'è WhatsApp, predilige WhatsApp
+        const numeroPulito = whatsappDestinatario.replace(/[^0-9]/g, '');
+        const testo = encodeURIComponent(`*MAB Lighthouse* 📸\n\nEcco la foto per l'attività: _${nomeAttivita}_\n\n👉 *Nota:* Ricordati di allegare l'immagine alla chat!\nNome file assegnato: *${nomeFileFinale}*`);
+        window.open(`https://api.whatsapp.com/send?phone=${numeroPulito}&text=${testo}`, '_blank');
+    } else if (mailDestinatario && mailDestinatario.trim() !== "") {
+        // Altrimenti usa la mail
+        const oggetto = encodeURIComponent(`MAB Lighthouse - ${nomeAttivita}`);
+        const corpo = encodeURIComponent(`Ciao!\n\nEcco i dettagli della foto scattata.\n\n👉 NOTA PER L'UTENTE: Ricordati di allegare l'ultima foto cliccando sulla graffetta (📎).\n\nNome file assegnato: ${nomeFileFinale}\n\nInviato tramite MAB Lighthouse.`);
+        window.location.href = `mailto:${mailDestinatario}?subject=${oggetto}&body=${corpo}`;
     }
 });
+
+btnConfig.addEventListener('click', () => {
+    qrModal.style.display = 'flex';
+    html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+        (txt) => { scaricaConfigurazioneDaGoogleSheets(estraiIdUniversale(txt)); chiudiScanner(); }, () => {}
+    ).catch(() => chiudiScanner());
+});
+btnCloseQr.addEventListener('click', chiudiScanner);
+function chiudiScanner() { qrModal.style.display = 'none'; if(html5QrCode&&html5QrCode.isScanning) html5QrCode.stop(); }
+function calcolaDistanzaMetri(lat1, lon1, lat2, lon2) {
+    const R = 6371000; const p1 = lat1 * Math.PI / 180; const p2 = lat2 * Math.PI / 180;
+    const dp = (lat2 - lat1) * Math.PI / 180; const dl = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
