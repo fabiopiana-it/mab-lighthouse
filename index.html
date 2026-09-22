@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MAB Lighthouse</title>
+<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="sky" aria-hidden="true">
+    <div class="beam"></div>
+  </div>
+
+  <header class="app-header">
+    <div class="brand">
+      <img id="app-logo" class="app-logo" src="" alt="" hidden>
+      <h1 id="app-title">MAB Lighthouse</h1>
+      <p id="app-tagline">Trova le esperienze intorno a te</p>
+    </div>
+    <button id="settings-btn" class="icon-btn" aria-label="Impostazioni" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3.2"></circle>
+        <path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.3-.9a7.6 7.6 0 0 0 2.6 1.5l.5 2.6h4l.5-2.6a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4-2-1.5Z"></path>
+      </svg>
+    </button>
+  </header>
+
+  <main class="stage">
+
+    <div id="status-banner" class="status-banner" hidden></div>
+
+    <div id="empty-state" class="empty-state" hidden>
+      <p>Nessuna esperienza configurata.</p>
+      <p class="empty-state-sub">Apri le impostazioni e collega il foglio dell'attività.</p>
+    </div>
+
+    <div id="beacon-grid" class="beacon-grid" hidden></div>
+
+  </main>
+
+  <div id="experience-view" class="experience-view" hidden>
+    <button id="experience-close" class="icon-btn experience-close" aria-label="Chiudi esperienza">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
+    </button>
+    <div id="experience-body" class="experience-body"></div>
+  </div>
+
+  <!-- ===== Config panel ===== -->
+  <div id="settings-panel" class="settings-panel" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="settings-sheet">
+      <div class="settings-head">
+        <h2 id="settings-title">Impostazioni</h2>
+        <button id="settings-close" class="icon-btn" aria-label="Chiudi impostazioni">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
+        </button>
+      </div>
+
+      <section class="settings-section">
+        <h3>Foglio dell'attività</h3>
+        <p class="settings-hint">Incolla l'indirizzo del foglio Google condiviso dal docente.</p>
+        <div class="field-row">
+          <input id="sheet-url-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off">
+          <button id="sheet-connect-btn" class="btn-primary">Collega</button>
+        </div>
+        <button id="sheet-qr-btn" class="btn-secondary" type="button">Inquadra QR code</button>
+        <p id="sheet-status" class="sheet-status"></p>
+      </section>
+
+      <section class="settings-section">
+        <h3>Avvisi di attivazione</h3>
+        <label class="toggle-row">
+          <span>Suono</span>
+          <input type="checkbox" id="toggle-sound" checked>
+          <span class="toggle-switch" aria-hidden="true"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Vibrazione</span>
+          <input type="checkbox" id="toggle-vibration" checked>
+          <span class="toggle-switch" aria-hidden="true"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Messaggio a schermo</span>
+          <input type="checkbox" id="toggle-toast" checked>
+          <span class="toggle-switch" aria-hidden="true"></span>
+        </label>
+      </section>
+
+      <section class="settings-section" id="qr-section" hidden>
+        <h3>Scansiona il QR code</h3>
+        <video id="qr-video" class="qr-video" playsinline muted></video>
+        <button id="qr-cancel-btn" class="btn-secondary" type="button">Annulla</button>
+      </section>
+
+      <button id="settings-done-btn" class="btn-primary settings-done" type="button">Chiudi impostazioni</button>
+      <p class="build-tag">build 2026-09-21 · v0.8 (logo + nome foto)</p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
